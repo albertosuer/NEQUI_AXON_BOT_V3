@@ -725,10 +725,15 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = [[InlineKeyboardButton("🔙 Volver", callback_data='menu_principal')]]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(
-            "🆕 <b>CREAR CUENTA</b>\n\n"
-            "Para crear tu cuenta usa el comando:\n"
-            "<code>/crear</code>\n\n"
-            "Te guiaré paso a paso.",
+            "🆕 <b>CREAR CUENTA NEQUI</b>\n\n"
+            "Para crear una cuenta usa el comando:\n\n"
+            "<code>/nequiaxonlabs numero pin saldo [nombre]</code>\n\n"
+            "📝 <b>Ejemplos:</b>\n\n"
+            "• Sin nombre (la app lo pedirá):\n"
+            "<code>/nequiaxonlabs 3001234567 1234 50000</code>\n\n"
+            "• Con nombre:\n"
+            "<code>/nequiaxonlabs 3001234567 1234 50000 Juan Perez</code>\n\n"
+            "✅ El nombre es opcional",
             parse_mode='HTML',
             reply_markup=reply_markup
         )
@@ -3981,9 +3986,12 @@ def main():
     flask_thread.start()
     print("🌐 Flask started on port 5000")
     
+    print("🔧 Creando aplicación de Telegram...")
     application = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+    print("✅ Aplicación de Telegram creada")
     
     # Handler /crear (solo pide arroba, luego /free)
+    print("🔧 Configurando handler /crear...")
     crear_handler = ConversationHandler(
         entry_points=[CommandHandler('crear', crear_start)],
         states={
@@ -3994,6 +4002,7 @@ def main():
     )
     
     # Handler /nuevo (solo admin)
+    print("🔧 Configurando handler /nuevo...")
     nuevo_handler = ConversationHandler(
         entry_points=[CommandHandler('nuevo', nuevo_start)],
         states={
@@ -4004,6 +4013,7 @@ def main():
         fallbacks=[CommandHandler('cancelar', nuevo_cancel)],
     )
     
+    print("🔧 Registrando handlers...")
     application.add_handler(CommandHandler('start', start))
     application.add_handler(CommandHandler('ver', cmd_ver))
     application.add_handler(CommandHandler('help', help_command))
