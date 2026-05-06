@@ -1,5 +1,9 @@
 FROM python:3.11-slim
 
+# Variables de entorno para Python sin buffer
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+
 # Instalar dependencias del sistema
 RUN apt-get update && apt-get install -y \
     gcc \
@@ -24,4 +28,5 @@ USER app
 
 EXPOSE 5000
 
-CMD ["python", "main.py"]
+# Ejecutar con -u para unbuffered output
+CMD ["python", "-u", "main.py"]

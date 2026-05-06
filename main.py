@@ -13,6 +13,10 @@ import time
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, ConversationHandler, CallbackQueryHandler
 
+print("=" * 50)
+print("🚀 INICIANDO NEQUI AXON BOT V3")
+print("=" * 50)
+
 load_dotenv()
 
 app = Flask(__name__)
