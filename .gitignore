@@ -35,6 +35,8 @@ env/
 firebase_credentials.json
 firebase_config.json
 firebase_credentials_temp.json
+nequiaxonfree-7a6f7-firebase-adminsdk-fbsvc-a6f72bdaab.json
+*firebase-adminsdk*.json
 
 # Backup Files
 usuariosvip.json
