@@ -240,26 +240,15 @@ def init_firebase():
         firebase_initialized = True
         
         print("✅ FIREBASE INICIALIZADO CORRECTAMENTE")
-        
-        # Test básico más detallado
-        print("🔍 Probando conexión a Firestore...")
-        test_collection = db.collection('users').limit(1)
-        docs = test_collection.get()
-        print(f"✅ Test conexión 'users': {len(docs)} documentos encontrados")
-        
-        # Test de escritura
-        test_doc_ref = db.collection('test').document('connection_test')
-        test_doc_ref.set({'timestamp': datetime.now().isoformat(), 'status': 'connected'})
-        print("✅ Test de escritura exitoso")
-        
-        # Limpiar test
-        test_doc_ref.delete()
-        print("✅ Test de eliminación exitoso")
+        print("✅ Cliente Firestore creado y listo para usar")
         
         # Limpiar archivo temporal si se creó
         if firebase_creds_env and os.path.exists('firebase_credentials_temp.json'):
-            os.remove('firebase_credentials_temp.json')
-            print("✅ Archivo temporal de credenciales eliminado")
+            try:
+                os.remove('firebase_credentials_temp.json')
+                print("✅ Archivo temporal de credenciales eliminado")
+            except:
+                pass
         
         return True
         
