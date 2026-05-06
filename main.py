@@ -13,10 +13,6 @@ import time
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, ConversationHandler, CallbackQueryHandler
 
-print("=" * 50)
-print("🚀 INICIANDO NEQUI AXON BOT V3")
-print("=" * 50)
-
 load_dotenv()
 
 app = Flask(__name__)
@@ -3953,45 +3949,44 @@ def get_user(username):
 
 def run_flask():
     port = int(os.getenv('PORT', 5000))
-    app.run(host='0.0.0.0', port=port, debug=False, use_reloader=False)
+    app.run(host='0.0.0.0', port=port, debug=False, use_reloader=False, threaded=True)
 
 def main():
-    print("🚀 Iniciando bot...")
-    print(f"🔑 Token: {TELEGRAM_BOT_TOKEN[:10]}...")
-    print(f"👥 Admin Principal ÚNICO: {ADMIN_PRINCIPAL_1} (@AXONDEVUI)")
+    """Función principal - Inicia el bot de Telegram"""
+    print("=" * 60)
+    print("🚀 NEQUI AXON BOT V3 - INICIANDO")
+    print("=" * 60)
+    print(f"👥 Admin: {ADMIN_PRINCIPAL_1} (@AXONDEVUI)")
+    print(f"📢 Grupo: {GROUP_LINK}")
     
-    print("🔥 Inicializando Firebase...")
-    init_firebase()
-    print(f"🔥 Firebase inicializado: {firebase_initialized}")
-    print(f"� db disponible: {db is not None}")
+    # 1. Inicializar Firebase
+    print("\n[1/5] 🔥 Inicializando Firebase...")
+    if not init_firebase():
+        print("❌ FATAL: Firebase no se pudo inicializar")
+        return
+    print("✅ Firebase OK")
     
-    print("👑 Cargando usuarios VIP...")
-    load_vip_from_json()  # Cargar usuarios VIP al iniciar
-    print(f"👑 VIPs cargados: {len(usuarios_vip)}")
+    # 2. Cargar datos
+    print("\n[2/5] 📦 Cargando datos...")
+    load_vip_from_json()
+    load_admins_from_json()
+    print(f"✅ VIPs: {len(usuarios_vip)} | Admins: {len(admins_secundarios)}")
     
-    print("🔧 Cargando admins secundarios...")
-    load_admins_from_json()  # Cargar admins secundarios al iniciar
-    print(f"🔧 Admins secundarios: {len(admins_secundarios)}")
+    # 3. Iniciar threads de backup
+    print("\n[3/5] 💾 Iniciando auto-backup...")
+    threading.Thread(target=auto_backup_vip, daemon=True).start()
+    threading.Thread(target=auto_restore_vip, daemon=True).start()
+    print("✅ Auto-backup activo")
     
-    # Iniciar threads de backup y restore automático
-    backup_thread = threading.Thread(target=auto_backup_vip, daemon=True)
-    backup_thread.start()
-    print("💾 Auto-backup VIP iniciado (cada 5 min)")
+    # 4. Crear aplicación de Telegram
+    print("\n[4/5] 🤖 Creando bot de Telegram...")
+    try:
+        application = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+    except Exception as e:
+        print(f"❌ FATAL: No se pudo crear el bot: {e}")
+        return
     
-    restore_thread = threading.Thread(target=auto_restore_vip, daemon=True)
-    restore_thread.start()
-    print("🔄 Auto-restore VIP iniciado (cada 5 min)")
-    
-    flask_thread = threading.Thread(target=run_flask, daemon=True)
-    flask_thread.start()
-    print("🌐 Flask started on port 5000")
-    
-    print("🔧 Creando aplicación de Telegram...")
-    application = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
-    print("✅ Aplicación de Telegram creada")
-    
-    # Handler /crear (solo pide arroba, luego /free)
-    print("🔧 Configurando handler /crear...")
+    # Handlers de conversación
     crear_handler = ConversationHandler(
         entry_points=[CommandHandler('crear', crear_start)],
         states={
@@ -4001,8 +3996,6 @@ def main():
         fallbacks=[CommandHandler('cancelar', cancel)],
     )
     
-    # Handler /nuevo (solo admin)
-    print("🔧 Configurando handler /nuevo...")
     nuevo_handler = ConversationHandler(
         entry_points=[CommandHandler('nuevo', nuevo_start)],
         states={
@@ -4013,61 +4006,82 @@ def main():
         fallbacks=[CommandHandler('cancelar', nuevo_cancel)],
     )
     
-    print("🔧 Registrando handlers...")
-    application.add_handler(CommandHandler('start', start))
-    application.add_handler(CommandHandler('ver', cmd_ver))
-    application.add_handler(CommandHandler('help', help_command))
-    application.add_handler(CallbackQueryHandler(button_callback))  # Handler para botones
-    application.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, handle_new_member))  # Detectar nuevos miembros
-    application.add_handler(crear_handler)
-    application.add_handler(nuevo_handler)
-    # Comando /nequiaxonlabs independiente (funciona sin /crear)
-    application.add_handler(CommandHandler('nequiaxonlabs', cmd_nequiaxonlabs_independiente))
-    application.add_handler(CommandHandler('off', cmd_off))
-    application.add_handler(CommandHandler('activo', cmd_activo))
-    application.add_handler(CommandHandler('mantenimiento', cmd_mantenimiento))
-    application.add_handler(CommandHandler('mantenimientoapagado', cmd_mantenimientoapagado))
-    application.add_handler(CommandHandler('offgroup', cmd_offgroup))
-    application.add_handler(CommandHandler('ongroup', cmd_ongroup))
-    application.add_handler(CommandHandler('agregaradmin', cmd_agregaradmin))
-    application.add_handler(CommandHandler('eliminaradmin', cmd_eliminaradmin))
-    application.add_handler(CommandHandler('listaradmins', cmd_listaradmins))
-    application.add_handler(CommandHandler('comandosadmin', cmd_comandosadmin))
-    application.add_handler(CommandHandler('stats', cmd_stats))
-    application.add_handler(CommandHandler('eliminar', cmd_eliminar))
-    application.add_handler(CommandHandler('buscar', cmd_buscar))  # Nuevo comando para buscar usuarios
-    application.add_handler(CommandHandler('usuarios', cmd_usuarios))
-    application.add_handler(CommandHandler('eliminaruser', cmd_eliminaruser))  # VIPs pueden eliminar sus propios usuarios
-    application.add_handler(CommandHandler('saldo', cmd_saldo))
-    application.add_handler(CommandHandler('cambiarnombre', cmd_cambiarnombre))  # Cambiar nombre de cuenta
-    application.add_handler(CommandHandler('agregarsaldo', cmd_agregarsaldo))
-    application.add_handler(CommandHandler('recargar', cmd_recargar))
-    application.add_handler(CommandHandler('recargasgratis', cmd_recargasgratis))
-    application.add_handler(CommandHandler('offrecargas', cmd_offrecargas))
-    application.add_handler(CommandHandler('agregargrupo', cmd_agregargrupo))
-    application.add_handler(CommandHandler('eliminargrupo', cmd_eliminargrupo))
-    application.add_handler(CommandHandler('agregarvip', cmd_agregarvip))
-    application.add_handler(CommandHandler('eliminarvip', cmd_eliminarvip))
-    application.add_handler(CommandHandler('agregarurlvip', cmd_agregarurlvip))
-    application.add_handler(CommandHandler('actualizarurlvip', cmd_actualizarurlvip))
-    application.add_handler(CommandHandler('configurargrupovip', cmd_configurargrupovip))
-    application.add_handler(CommandHandler('listavip', cmd_listavip))
-    application.add_handler(CommandHandler('statusvip', cmd_statusvip))
-    application.add_handler(CommandHandler('diagnostico', cmd_diagnostico))
-    application.add_handler(CommandHandler('testverify', cmd_testverify))
-    application.add_handler(CommandHandler('testfirebase', cmd_testfirebase))
-    application.add_handler(CommandHandler('sincronizar', cmd_sincronizar))
-    application.add_handler(CommandHandler('regenerarenlacevip', cmd_regenerarenlacevip))
+    # Registrar todos los handlers
+    handlers = [
+        CommandHandler('start', start),
+        CommandHandler('ver', cmd_ver),
+        CommandHandler('help', help_command),
+        CallbackQueryHandler(button_callback),
+        MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, handle_new_member),
+        crear_handler,
+        nuevo_handler,
+        CommandHandler('nequiaxonlabs', cmd_nequiaxonlabs_independiente),
+        CommandHandler('off', cmd_off),
+        CommandHandler('activo', cmd_activo),
+        CommandHandler('mantenimiento', cmd_mantenimiento),
+        CommandHandler('mantenimientoapagado', cmd_mantenimientoapagado),
+        CommandHandler('offgroup', cmd_offgroup),
+        CommandHandler('ongroup', cmd_ongroup),
+        CommandHandler('agregaradmin', cmd_agregaradmin),
+        CommandHandler('eliminaradmin', cmd_eliminaradmin),
+        CommandHandler('listaradmins', cmd_listaradmins),
+        CommandHandler('comandosadmin', cmd_comandosadmin),
+        CommandHandler('stats', cmd_stats),
+        CommandHandler('eliminar', cmd_eliminar),
+        CommandHandler('buscar', cmd_buscar),
+        CommandHandler('usuarios', cmd_usuarios),
+        CommandHandler('eliminaruser', cmd_eliminaruser),
+        CommandHandler('saldo', cmd_saldo),
+        CommandHandler('cambiarnombre', cmd_cambiarnombre),
+        CommandHandler('agregarsaldo', cmd_agregarsaldo),
+        CommandHandler('recargar', cmd_recargar),
+        CommandHandler('recargasgratis', cmd_recargasgratis),
+        CommandHandler('offrecargas', cmd_offrecargas),
+        CommandHandler('agregargrupo', cmd_agregargrupo),
+        CommandHandler('eliminargrupo', cmd_eliminargrupo),
+        CommandHandler('agregarvip', cmd_agregarvip),
+        CommandHandler('eliminarvip', cmd_eliminarvip),
+        CommandHandler('agregarurlvip', cmd_agregarurlvip),
+        CommandHandler('actualizarurlvip', cmd_actualizarurlvip),
+        CommandHandler('configurargrupovip', cmd_configurargrupovip),
+        CommandHandler('listavip', cmd_listavip),
+        CommandHandler('statusvip', cmd_statusvip),
+        CommandHandler('diagnostico', cmd_diagnostico),
+        CommandHandler('testverify', cmd_testverify),
+        CommandHandler('testfirebase', cmd_testfirebase),
+        CommandHandler('sincronizar', cmd_sincronizar),
+        CommandHandler('regenerarenlacevip', cmd_regenerarenlacevip),
+    ]
     
-    print("🤖 Telegram bot started")
-    print(f"📢 Required group: {GROUP_LINK}")
-    application.run_polling(allowed_updates=Update.ALL_TYPES)
+    for handler in handlers:
+        application.add_handler(handler)
+    
+    print("✅ Bot configurado")
+    
+    # 5. Iniciar polling
+    print("\n[5/5] 🚀 Iniciando polling...")
+    print("=" * 60)
+    print("✅ BOT ACTIVO Y ESCUCHANDO")
+    print("=" * 60)
+    
+    # Configurar polling con reintentos automáticos
+    try:
+        application.run_polling(
+            allowed_updates=Update.ALL_TYPES,
+            drop_pending_updates=True,
+            close_loop=False,
+            stop_signals=None  # Evitar que se detenga por señales
+        )
+    except Exception as e:
+        print(f"❌ Error en polling: {e}")
+        print("🔄 El bot se reiniciará automáticamente...")
 
 if __name__ == '__main__':
-    import asyncio
-    # Fix para Python 3.14+
     try:
-        asyncio.get_event_loop()
-    except RuntimeError:
-        asyncio.set_event_loop(asyncio.new_event_loop())
-    main()
+        main()
+    except KeyboardInterrupt:
+        print("\n⚠️ Bot detenido por el usuario")
+    except Exception as e:
+        print(f"\n❌ ERROR FATAL: {e}")
+        import traceback
+        traceback.print_exc()
