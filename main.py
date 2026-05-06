@@ -1417,16 +1417,15 @@ async def complete_account_step(update: Update, context: ContextTypes.DEFAULT_TY
 # Función cmd_nequiaxonlabs eliminada - solo se usa complete_account_step dentro del ConversationHandler
 
 async def cmd_nequiaxonlabs_independiente(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Comando /nequiaxonlabs independiente que funciona sin /crear"""
+    """Comando /nequiaxonlabs independiente que funciona sin /crear - VERSIÓN RÁPIDA"""
     global db
     user_id = update.effective_user.id
     user = update.effective_user
     
-    print(f"🔍 NEQUIAXONLABS INDEPENDIENTE - Usuario: {user_id}")
+    print(f"🔍 NEQUIAXONLABS - Usuario: {user_id}")
     
-    # VERIFICACIÓN 1: Modo Mantenimiento (afecta a TODOS excepto admins)
+    # VERIFICACIÓN 1: Modo Mantenimiento
     if mantenimiento_mode and not is_admin(user_id):
-        print(f"❌ Usuario {user_id} bloqueado por mantenimiento")
         keyboard = [[InlineKeyboardButton("📞 Contactar Soporte", url="https://t.me/AXONDEVUI")]]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await update.message.reply_text(mensaje_mantenimiento(), parse_mode='HTML', reply_markup=reply_markup)
@@ -1435,40 +1434,32 @@ async def cmd_nequiaxonlabs_independiente(update: Update, context: ContextTypes.
     is_bot_admin = is_admin(user_id)
     is_vip = user_id in usuarios_vip
     
-    # VERIFICACIÓN 2: Bot OFF (solo afecta a usuarios normales, VIPs siguen funcionando)
+    # VERIFICACIÓN 2: Bot OFF
     if not bot_active and not is_bot_admin and not is_vip:
-        print(f"❌ Usuario {user_id} - Bot OFF")
         keyboard = [[InlineKeyboardButton("🌟 Obtener VIP", url="https://t.me/AXONDEVUI")]]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await update.message.reply_text(mensaje_bot_desactivado(), parse_mode='HTML', reply_markup=reply_markup)
         return
     
-    # Verificar que el usuario tenga username de Telegram
+    # Verificar username
     telegram_username = user.username
     if not telegram_username:
-        print(f"❌ Usuario {user_id} - Sin username de Telegram")
         await update.message.reply_text(
             "❌ <b>USERNAME REQUERIDO</b>\n\n"
-            "Debes configurar un username (@) en Telegram para usar este bot.\n\n"
-            "📱 <b>Cómo configurarlo:</b>\n"
-            "1. Ve a Ajustes de Telegram\n"
-            "2. Edita tu perfil\n"
-            "3. Configura un nombre de usuario (@)\n"
-            "4. Intenta de nuevo",
+            "Debes configurar un username (@) en Telegram.\n\n"
+            "📱 Ajustes → Edita perfil → Configura username",
             parse_mode='HTML'
         )
         return
     
-    # Verificar formato del comando - ahora acepta 3 o 4 argumentos (nombre opcional)
+    # Verificar formato del comando
     if not context.args or len(context.args) < 3:
-        print(f"❌ Usuario {user_id} - Formato incorrecto: {context.args}")
         await update.message.reply_text(
             "❌ <b>FORMATO INCORRECTO</b>\n\n"
             "Usa: <code>/nequiaxonlabs numero pin saldo [nombre]</code>\n\n"
             "📌 Ejemplos:\n"
             "<code>/nequiaxonlabs 3001234567 0515 500000</code>\n"
-            "<code>/nequiaxonlabs 3001234567 0515 500000 Juan Perez</code>\n\n"
-            "⚠️ Número: 10 dígitos | PIN: 4 dígitos | Nombre: opcional",
+            "<code>/nequiaxonlabs 3001234567 0515 500000 Juan</code>",
             parse_mode='HTML'
         )
         return
@@ -1476,11 +1467,9 @@ async def cmd_nequiaxonlabs_independiente(update: Update, context: ContextTypes.
     phone = context.args[0].strip()
     pin = context.args[1].strip()
     saldo_text = context.args[2].strip().replace('.', '').replace(',', '')
-    name = ' '.join(context.args[3:]).strip() if len(context.args) > 3 else ""  # Nombre opcional
+    name = ' '.join(context.args[3:]).strip() if len(context.args) > 3 else ""
     
-    print(f"📱 Usuario {user_id} - Phone: {phone}, PIN: {pin}, Saldo: {saldo_text}, Nombre: '{name}'")
-    
-    # Validaciones
+    # Validaciones rápidas
     if not phone.isdigit() or len(phone) != 10:
         await update.message.reply_text("❌ Número inválido. Debe tener 10 dígitos.")
         return
@@ -1496,94 +1485,61 @@ async def cmd_nequiaxonlabs_independiente(update: Update, context: ContextTypes.
     saldo = int(saldo_text)
     created_at = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     
-    print(f"✅ Usuario {user_id} (@{telegram_username}) - Guardando cuenta: {phone}")
-    
-    if db:
-        try:
-            # VERIFICAR SI EL NÚMERO YA EXISTE en 'users'
-            print(f"🔍 Verificando si número {phone} ya existe en 'users'...")
-            existing_doc = db.collection('users').document(phone).get()
-            if existing_doc.exists:
-                print(f"❌ Usuario {user_id} - Número {phone} ya existe en 'users'")
-                await update.message.reply_text(
-                    f"❌ <b>NÚMERO YA REGISTRADO</b>\n\n"
-                    f"El número <code>{phone}</code> ya se encuentra registrado.\n"
-                    f"Usa un número diferente para crear tu cuenta.",
-                    parse_mode='HTML'
-                )
-                return
-            print(f"✅ Número {phone} disponible en 'users'")
-            
-            # Guardar en la colección 'users' con el NÚMERO como ID (como espera la app)
-            print(f"💾 Creando en 'users' con ID: {phone}")
-            user_doc_data = {
-                'name': name,  # Nombre opcional, vacío si no se proporciona
-                'pin': str(pin),
-                'saldo': str(saldo),
-                'isActive': True,
-                'created_by': user_id,
-                'telegram_username': telegram_username,
-                'created_at': created_at
-            }
-            
-            print(f"📝 Datos para crear en users: {user_doc_data}")
-            db.collection('users').document(phone).set(user_doc_data)
-            print(f"✅ Usuario {user_id} - Cuenta creada en 'users' con ID {phone}")
-            
-            # VERIFICAR QUE SE GUARDÓ
-            verification_doc = db.collection('users').document(phone).get()
-            if not verification_doc.exists:
-                print(f"❌ ERROR: La cuenta NO se guardó en Firebase")
-                await update.message.reply_text("❌ Error al guardar la cuenta. Intenta de nuevo.")
-                return
-            
-            print(f"✅ VERIFICACIÓN EXITOSA: Cuenta guardada correctamente en Firebase")
-            
-        except Exception as e:
-            print(f"❌ Firebase error: {e}")
-            import traceback
-            traceback.print_exc()
-            await update.message.reply_text("❌ Error al guardar. Intenta de nuevo.")
-            return
-    else:
-        print(f"❌ ERROR: Firebase no está conectado")
+    # GUARDAR EN FIREBASE - VERSIÓN RÁPIDA SIN VERIFICACIONES LENTAS
+    if not db:
         await update.message.reply_text("❌ Error de conexión con Firebase.")
         return
     
-    # Notificar al admin SOLO si NO es el admin quien crea la cuenta
+    try:
+        # Crear documento directamente sin verificar si existe
+        user_doc_data = {
+            'name': name,
+            'pin': str(pin),
+            'saldo': str(saldo),
+            'isActive': True,
+            'created_by': user_id,
+            'telegram_username': telegram_username,
+            'created_at': created_at
+        }
+        
+        print(f"💾 Guardando {phone} en Firebase...")
+        
+        # Usar set() con merge=False para crear o sobrescribir
+        db.collection('users').document(phone).set(user_doc_data, merge=False)
+        
+        print(f"✅ Cuenta {phone} guardada")
+        
+    except Exception as e:
+        print(f"❌ Firebase error: {e}")
+        await update.message.reply_text("❌ Error al guardar. Intenta de nuevo.")
+        return
+    
+    # Notificar al admin
     if str(user_id) != ADMIN_PRINCIPAL_1:
         nombre_msg = f"👤 <b>Nombre:</b> {name}\n" if name else ""
-        admin_message = f"""
-🆕 <b>NUEVA CUENTA CREADA</b>
+        admin_message = f"""🆕 <b>NUEVA CUENTA</b>
 
-{nombre_msg}👤 <b>Username Telegram:</b> @{telegram_username}
-📱 <b>Teléfono:</b> {phone}
+{nombre_msg}👤 <b>@{telegram_username}</b>
+📱 <b>Tel:</b> {phone}
 🔐 <b>PIN:</b> {pin}
 💰 <b>Saldo:</b> ${saldo:,}
-🆔 <b>Telegram ID:</b> {user_id}
-🕐 <b>Fecha:</b> {created_at}
 """
         send_telegram_message(admin_message, ADMIN_PRINCIPAL_1)
-        print(f"✅ Notificación enviada al admin principal")
-    else:
-        print(f"✅ Admin creando cuenta propia - Sin notificación")
     
     # Respuesta al usuario
-    nombre_msg = f"👤 Nombre: <b>{name}</b>\n" if name else "👤 Nombre: <i>Se pedirá en la app</i>\n"
+    nombre_msg = f"👤 Nombre: <b>{name}</b>\n" if name else ""
     
     await update.message.reply_text(
-        f"✅ <b>¡CUENTA CREADA EXITOSAMENTE!</b>\n\n"
+        f"✅ <b>¡CUENTA CREADA!</b>\n\n"
         f"{nombre_msg}"
-        f"👤 Username Telegram: <b>@{telegram_username}</b>\n"
         f"📱 Teléfono: <code>{phone}</code>\n"
         f"🔐 PIN: <code>{pin}</code>\n"
         f"💰 Saldo: ${saldo:,}\n\n"
-        f"🎉 Tu cuenta está lista para usar.\n"
-        f"Ingresa a la app con tu número: <code>{phone}</code>",
+        f"🎉 Ingresa a la app con: <code>{phone}</code>",
         parse_mode='HTML'
     )
     
-    print(f"✅ Usuario {user_id} - Proceso completado")
+    print(f"✅ Proceso completado para {user_id}")
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
