@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "373127129071",
+    "project_id": "nequiaxonfree-7a6f7",
+    "storage_bucket": "nequiaxonfree-7a6f7.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:373127129071:android:d1feb1bb9c6a3e268c781a",
+        "android_client_info": {
+          "package_name": "ui.axon.nequidevv"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAbc5MJipGWeLgDU7rcYkff1kTIAP7B2es"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

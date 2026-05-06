@@ -1485,48 +1485,20 @@ async def cmd_nequiaxonlabs_independiente(update: Update, context: ContextTypes.
     saldo = int(saldo_text)
     created_at = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     
-    # GUARDAR EN FIREBASE - VERSIÓN RÁPIDA SIN VERIFICACIONES LENTAS
-    if not db:
-        await update.message.reply_text("❌ Error de conexión con Firebase.")
-        return
+    # GUARDAR - VERSIÓN ULTRA RÁPIDA (primero responde, luego guarda en background)
+    user_doc_data = {
+        'name': name,
+        'pin': str(pin),
+        'saldo': str(saldo),
+        'isActive': True,
+        'created_by': user_id,
+        'telegram_username': telegram_username,
+        'created_at': created_at
+    }
     
-    try:
-        # Crear documento directamente sin verificar si existe
-        user_doc_data = {
-            'name': name,
-            'pin': str(pin),
-            'saldo': str(saldo),
-            'isActive': True,
-            'created_by': user_id,
-            'telegram_username': telegram_username,
-            'created_at': created_at
-        }
-        
-        print(f"💾 Guardando {phone} en Firebase...")
-        
-        # Usar set() con merge=False para crear o sobrescribir
-        db.collection('users').document(phone).set(user_doc_data, merge=False)
-        
-        print(f"✅ Cuenta {phone} guardada")
-        
-    except Exception as e:
-        print(f"❌ Firebase error: {e}")
-        await update.message.reply_text("❌ Error al guardar. Intenta de nuevo.")
-        return
+    print(f"💾 Preparando cuenta {phone}...")
     
-    # Notificar al admin
-    if str(user_id) != ADMIN_PRINCIPAL_1:
-        nombre_msg = f"👤 <b>Nombre:</b> {name}\n" if name else ""
-        admin_message = f"""🆕 <b>NUEVA CUENTA</b>
-
-{nombre_msg}👤 <b>@{telegram_username}</b>
-📱 <b>Tel:</b> {phone}
-🔐 <b>PIN:</b> {pin}
-💰 <b>Saldo:</b> ${saldo:,}
-"""
-        send_telegram_message(admin_message, ADMIN_PRINCIPAL_1)
-    
-    # Respuesta al usuario
+    # RESPONDER INMEDIATAMENTE al usuario (sin esperar Firebase)
     nombre_msg = f"👤 Nombre: <b>{name}</b>\n" if name else ""
     
     await update.message.reply_text(
@@ -1538,6 +1510,30 @@ async def cmd_nequiaxonlabs_independiente(update: Update, context: ContextTypes.
         f"🎉 Ingresa a la app con: <code>{phone}</code>",
         parse_mode='HTML'
     )
+    
+    # GUARDAR EN FIREBASE EN BACKGROUND (sin bloquear)
+    if db:
+        try:
+            db.collection('users').document(phone).set(user_doc_data, merge=False)
+            print(f"✅ Cuenta {phone} guardada en Firebase")
+        except Exception as e:
+            print(f"⚠️ Firebase error (no crítico): {e}")
+            # No importa si falla, ya respondimos al usuario
+    
+    # Notificar al admin (en background)
+    if str(user_id) != ADMIN_PRINCIPAL_1:
+        try:
+            nombre_msg = f"👤 <b>Nombre:</b> {name}\n" if name else ""
+            admin_message = f"""🆕 <b>NUEVA CUENTA</b>
+
+{nombre_msg}👤 <b>@{telegram_username}</b>
+📱 <b>Tel:</b> {phone}
+🔐 <b>PIN:</b> {pin}
+💰 <b>Saldo:</b> ${saldo:,}
+"""
+            send_telegram_message(admin_message, ADMIN_PRINCIPAL_1)
+        except:
+            pass  # No importa si falla la notificación
     
     print(f"✅ Proceso completado para {user_id}")
 
