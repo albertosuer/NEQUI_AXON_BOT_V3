@@ -1594,17 +1594,6 @@ async def cmd_nequiaxonlabs_independiente(update: Update, context: ContextTypes.
     )
     
     print(f"✅ Usuario {user_id} - Proceso completado")
-        f"✅ <b>¡CUENTA CREADA EXITOSAMENTE!</b>\n\n"
-        f"👤 Username: <b>{username}</b>\n"
-        f"📱 Teléfono: <code>{phone}</code>\n"
-        f"🔐 PIN: <code>{pin}</code>\n"
-        f"💰 Saldo: ${saldo:,}\n\n"
-        f"🎉 Tu cuenta está lista para usar.\n"
-        f"Ingresa a la app con tu username: <code>{username}</code>",
-        parse_mode='HTML'
-    )
-    
-    print(f"✅ Usuario {user_id} - Proceso completado")
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
