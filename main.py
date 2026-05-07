@@ -1301,8 +1301,10 @@ async def cmd_nequiaxonlabs_independiente(update: Update, context: ContextTypes.
     global db
     user_id = update.effective_user.id
     user = update.effective_user
+    chat_id = update.effective_chat.id
+    chat_type = update.effective_chat.type
     
-    print(f"🔍 NEQUIAXONLABS - Usuario: {user_id}")
+    print(f"🔍 NEQUIAXONLABS - Usuario: {user_id}, Chat: {chat_id}, Tipo: {chat_type}")
     
     # VERIFICACIÓN 1: Modo Mantenimiento
     if mantenimiento_mode and not is_admin(user_id):
@@ -1314,7 +1316,42 @@ async def cmd_nequiaxonlabs_independiente(update: Update, context: ContextTypes.
     is_bot_admin = is_admin(user_id)
     is_vip = user_id in usuarios_vip
     
-    # VERIFICACIÓN 2: Bot OFF
+    # VERIFICACIÓN 2: Verificar si es en grupo o privado
+    if chat_type == 'private':
+        # En privado SOLO admins y VIPs pueden usar
+        if not is_bot_admin and not is_vip:
+            await update.message.reply_text(
+                "❌ <b>ACCESO RESTRINGIDO</b>\n\n"
+                "Este comando solo puede usarse:\n"
+                "• En grupos autorizados\n"
+                "• Por usuarios VIP en privado\n"
+                "• Por administradores\n\n"
+                "💡 Usa el bot en el grupo oficial o contacta al admin para obtener VIP.",
+                parse_mode='HTML'
+            )
+            return
+    else:
+        # En grupo: verificar que el grupo esté permitido
+        if not is_bot_admin and not is_vip:
+            if chat_id not in grupos_permitidos:
+                print(f"❌ Usuario {user_id} - Grupo no permitido: {chat_id}")
+                await update.message.reply_text(
+                    "❌ <b>GRUPO NO AUTORIZADO</b>\n\n"
+                    "Este bot no está activo en este grupo.\n"
+                    "Contacta al administrador para autorizar este grupo.",
+                    parse_mode='HTML'
+                )
+                return
+            if not group_active:
+                print(f"❌ Usuario {user_id} - Grupos desactivados")
+                await update.message.reply_text(
+                    "❌ <b>BOT DESACTIVADO EN GRUPOS</b>\n\n"
+                    "El bot está temporalmente desactivado en grupos.",
+                    parse_mode='HTML'
+                )
+                return
+    
+    # VERIFICACIÓN 3: Bot OFF (solo afecta a usuarios normales)
     if not bot_active and not is_bot_admin and not is_vip:
         keyboard = [[InlineKeyboardButton("🌟 Obtener VIP", url="https://t.me/AXONDEVUI")]]
         reply_markup = InlineKeyboardMarkup(keyboard)
