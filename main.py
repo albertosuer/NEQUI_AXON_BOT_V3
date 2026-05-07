@@ -602,14 +602,19 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(
             "🆕 <b>CREAR CUENTA NEQUI</b>\n\n"
-            "Para crear una cuenta usa el comando:\n\n"
+            "Usa este comando para crear una cuenta:\n\n"
             "<code>/nequiaxonlabs numero pin saldo [nombre]</code>\n\n"
             "📝 <b>Ejemplos:</b>\n\n"
-            "• Sin nombre (la app lo pedirá):\n"
+            "✅ <b>SIN nombre</b> (recomendado - la app lo pedirá):\n"
             "<code>/nequiaxonlabs 3001234567 1234 50000</code>\n\n"
-            "• Con nombre:\n"
-            "<code>/nequiaxonlabs 3001234567 1234 50000 Juan Perez</code>\n\n"
-            "✅ El nombre es opcional",
+            "✅ <b>CON nombre</b> (opcional):\n"
+            "<code>/nequiaxonlabs 3001234567 1234 50000 Juan</code>\n\n"
+            "⚠️ <b>IMPORTANTE:</b>\n"
+            "• Número: 10 dígitos\n"
+            "• PIN: 4 dígitos\n"
+            "• Saldo: solo números\n"
+            "• Nombre: OPCIONAL (puedes omitirlo)\n\n"
+            "💡 <b>Tip:</b> Es mejor crear sin nombre y que la app lo pida después.",
             parse_mode='HTML',
             reply_markup=reply_markup
         )
