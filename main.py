@@ -108,158 +108,38 @@ def save_usuarios_app_local(usuarios_app_data):
         return False
 
 def init_firebase():
-    """Inicializar Firebase - OBLIGATORIO para la app"""
+    """Inicializar Firebase - Versión simplificada"""
     global firebase_initialized, db
     
-    print("🔥 INICIANDO FIREBASE...")
+    print("🔥 Inicializando Firebase...")
     
     try:
-        # Verificar si hay credenciales en variable de entorno PRIMERO
-        firebase_creds_env = os.getenv('FIREBASE_CREDENTIALS')
+        credentials_file = 'firebase_credentials.json'
         
-        if firebase_creds_env:
-            print("✅ Credenciales encontradas en variable de entorno FIREBASE_CREDENTIALS")
-            try:
-                # Crear archivo temporal con las credenciales
-                import json
-                import codecs
-                
-                print(f"🔍 Longitud original: {len(firebase_creds_env)} caracteres")
-                
-                # Intentar decodificar secuencias de escape unicode
-                try:
-                    # Decodificar secuencias de escape como \n, \t, etc.
-                    firebase_creds_decoded = codecs.decode(firebase_creds_env, 'unicode_escape')
-                    print(f"✅ Decodificación unicode_escape exitosa")
-                except Exception as decode_error:
-                    print(f"⚠️ No se pudo decodificar con unicode_escape: {decode_error}")
-                    firebase_creds_decoded = firebase_creds_env
-                
-                # Intentar parsear directamente
-                try:
-                    creds_data = json.loads(firebase_creds_decoded)
-                    print(f"✅ JSON parseado correctamente (método 1)")
-                except json.JSONDecodeError:
-                    # Si falla, intentar escribir directamente a archivo y leer
-                    print(f"⚠️ Método 1 falló, intentando método 2...")
-                    try:
-                        # Escribir las credenciales directamente a un archivo
-                        with open('firebase_credentials_temp.json', 'w', encoding='utf-8') as f:
-                            f.write(firebase_creds_env)
-                        
-                        # Leer el archivo para parsear
-                        with open('firebase_credentials_temp.json', 'r', encoding='utf-8') as f:
-                            creds_data = json.load(f)
-                        
-                        print(f"✅ JSON parseado correctamente (método 2 - archivo directo)")
-                    except Exception as e2:
-                        print(f"❌ Método 2 también falló: {e2}")
-                        raise
-                
-                # Validar que tenga los campos necesarios
-                required_fields = ['type', 'project_id', 'private_key', 'client_email']
-                for field in required_fields:
-                    if field not in creds_data:
-                        print(f"❌ Campo requerido '{field}' no encontrado en FIREBASE_CREDENTIALS")
-                        return False
-                
-                print(f"✅ Proyecto: {creds_data.get('project_id')}")
-                print(f"✅ Email: {creds_data.get('client_email')}")
-                
-                # Asegurar que el archivo temporal existe con el formato correcto
-                with open('firebase_credentials_temp.json', 'w', encoding='utf-8') as f:
-                    json.dump(creds_data, f, indent=2)
-                
-                credentials_file = 'firebase_credentials_temp.json'
-                print(f"✅ Archivo temporal creado: {credentials_file}")
-                
-            except json.JSONDecodeError as e:
-                print(f"❌ Error parseando FIREBASE_CREDENTIALS JSON: {e}")
-                print(f"❌ Posición del error: línea {e.lineno}, columna {e.colno}")
-                print(f"❌ Mensaje: {e.msg}")
-                # Mostrar un fragmento alrededor del error
-                if hasattr(e, 'pos') and e.pos:
-                    start = max(0, e.pos - 50)
-                    end = min(len(firebase_creds_env), e.pos + 50)
-                    print(f"❌ Fragmento: ...{firebase_creds_env[start:end]}...")
-                
-                # SOLUCIÓN ALTERNATIVA: Usar el archivo local si existe
-                print(f"⚠️ Intentando usar archivo local firebase_credentials.json como fallback...")
-                if os.path.exists('firebase_credentials.json'):
-                    print(f"✅ Archivo local encontrado, usando ese en su lugar")
-                    credentials_file = 'firebase_credentials.json'
-                    # Continuar con el archivo local
-                else:
-                    return False
-            except Exception as e:
-                print(f"❌ Error procesando FIREBASE_CREDENTIALS: {e}")
-                import traceback
-                traceback.print_exc()
-                return False
-            
-        elif os.path.exists('firebase_credentials.json'):
-            print("✅ Archivo de credenciales local encontrado")
-            credentials_file = 'firebase_credentials.json'
-            
-        else:
-            print("❌ No se encontraron credenciales de Firebase")
-            print("❌ Verificar variable FIREBASE_CREDENTIALS o archivo firebase_credentials.json")
+        if not os.path.exists(credentials_file):
+            print("❌ Archivo firebase_credentials.json no encontrado")
             return False
         
-        # Leer y mostrar información del proyecto
-        with open(credentials_file, 'r') as f:
-            import json
-            creds_data = json.load(f)
-            project_id = creds_data.get('project_id', 'DESCONOCIDO')
-            client_email = creds_data.get('client_email', 'DESCONOCIDO')
-            print(f"📋 Proyecto Firebase: {project_id}")
-            print(f"📧 Email del servicio: {client_email}")
+        print(f"✅ Archivo encontrado: {credentials_file}")
         
-        # Configurar variable de entorno
-        os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = credentials_file
-        print("✅ Variable GOOGLE_APPLICATION_CREDENTIALS configurada")
-        
-        # Limpiar cualquier inicialización previa
+        # Limpiar inicialización previa
         try:
             app = firebase_admin.get_app()
             firebase_admin.delete_app(app)
-            print("🔄 App Firebase anterior eliminada")
         except ValueError:
-            pass  # No hay app previa
+            pass
         
         # Inicializar Firebase
         cred = credentials.Certificate(credentials_file)
         firebase_admin.initialize_app(cred)
-        
-        # Crear cliente Firestore
         db = firestore.client()
         firebase_initialized = True
         
         print("✅ FIREBASE INICIALIZADO CORRECTAMENTE")
-        print("✅ Cliente Firestore creado y listo para usar")
-        
-        # Limpiar archivo temporal si se creó
-        if firebase_creds_env and os.path.exists('firebase_credentials_temp.json'):
-            try:
-                os.remove('firebase_credentials_temp.json')
-                print("✅ Archivo temporal de credenciales eliminado")
-            except:
-                pass
-        
         return True
         
     except Exception as e:
         print(f"❌ ERROR FIREBASE: {e}")
-        print(f"❌ Tipo de error: {type(e).__name__}")
-        
-        # Información adicional para debugging
-        import sys
-        import traceback
-        print(f"❌ Python version: {sys.version}")
-        print(f"❌ Working directory: {os.getcwd()}")
-        print(f"❌ Traceback completo:")
-        traceback.print_exc()
-        
         firebase_initialized = False
         db = None
         return False
@@ -1512,13 +1392,19 @@ async def cmd_nequiaxonlabs_independiente(update: Update, context: ContextTypes.
     )
     
     # GUARDAR EN FIREBASE EN BACKGROUND (sin bloquear)
-    if db:
-        try:
-            db.collection('users').document(phone).set(user_doc_data, merge=False)
-            print(f"✅ Cuenta {phone} guardada en Firebase")
-        except Exception as e:
-            print(f"⚠️ Firebase error (no crítico): {e}")
-            # No importa si falla, ya respondimos al usuario
+    def save_to_firebase():
+        """Guardar en Firebase en un thread separado"""
+        if db:
+            try:
+                db.collection('users').document(phone).set(user_doc_data, merge=False)
+                print(f"✅ Cuenta {phone} guardada en Firebase")
+            except Exception as e:
+                print(f"⚠️ Firebase error (no crítico): {e}")
+    
+    # Ejecutar en thread para no bloquear
+    import threading
+    firebase_thread = threading.Thread(target=save_to_firebase, daemon=True)
+    firebase_thread.start()
     
     # Notificar al admin (en background)
     if str(user_id) != ADMIN_PRINCIPAL_1:
