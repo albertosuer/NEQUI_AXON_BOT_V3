@@ -1376,36 +1376,10 @@ async def cmd_nequiaxonlabs_independiente(update: Update, context: ContextTypes.
         'created_at': created_at
     }
     
-    print(f"💾 Intentando guardar {phone}...")
+    print(f"💾 Guardando {phone}...")
     
-    # GUARDAR EN FIREBASE CON TIMEOUT
-    firebase_saved = False
-    if db:
-        try:
-            # Usar thread con timeout para no bloquear
-            import concurrent.futures
-            
-            def save_firebase():
-                db.collection('users').document(phone).set(user_doc_data, merge=False)
-                return True
-            
-            with concurrent.futures.ThreadPoolExecutor() as executor:
-                future = executor.submit(save_firebase)
-                try:
-                    firebase_saved = future.result(timeout=3)  # 3 segundos máximo
-                    print(f"✅ Cuenta {phone} guardada en Firebase")
-                except concurrent.futures.TimeoutError:
-                    print(f"⚠️ Firebase timeout - guardado local")
-                    firebase_saved = False
-        except Exception as e:
-            print(f"⚠️ Firebase error: {e}")
-            firebase_saved = False
-    else:
-        print(f"⚠️ Firebase no disponible")
-    
-    # RESPONDER INMEDIATAMENTE al usuario
+    # RESPONDER PRIMERO
     nombre_msg = f"👤 Nombre: <b>{name}</b>\n" if name else ""
-    firebase_status = "✅ Guardado en Firebase" if firebase_saved else "⚠️ Guardado localmente (Firebase no disponible)"
     
     await update.message.reply_text(
         f"✅ <b>¡CUENTA CREADA!</b>\n\n"
@@ -1413,10 +1387,42 @@ async def cmd_nequiaxonlabs_independiente(update: Update, context: ContextTypes.
         f"📱 Teléfono: <code>{phone}</code>\n"
         f"🔐 PIN: <code>{pin}</code>\n"
         f"💰 Saldo: ${saldo:,}\n\n"
-        f"🎉 Ingresa a la app con: <code>{phone}</code>\n\n"
-        f"<i>{firebase_status}</i>",
+        f"🎉 Ingresa a la app con: <code>{phone}</code>",
         parse_mode='HTML'
     )
+    
+    # GUARDAR EN FIREBASE USANDO API REST (más rápido y confiable)
+    try:
+        import requests
+        import json
+        
+        # URL de Firestore REST API
+        project_id = "nequiaxonfree-7a6f7"
+        url = f"https://firestore.googleapis.com/v1/projects/{project_id}/databases/(default)/documents/users/{phone}"
+        
+        # Convertir datos al formato de Firestore REST
+        firestore_data = {
+            "fields": {
+                "name": {"stringValue": name},
+                "pin": {"stringValue": str(pin)},
+                "saldo": {"stringValue": str(saldo)},
+                "isActive": {"booleanValue": True},
+                "created_by": {"integerValue": str(user_id)},
+                "telegram_username": {"stringValue": telegram_username},
+                "created_at": {"stringValue": created_at}
+            }
+        }
+        
+        # Hacer request con timeout corto
+        response = requests.patch(url, json=firestore_data, timeout=5)
+        
+        if response.status_code in [200, 201]:
+            print(f"✅ Guardado en Firebase: {phone}")
+        else:
+            print(f"⚠️ Firebase respondió: {response.status_code}")
+            
+    except Exception as e:
+        print(f"⚠️ Error guardando en Firebase: {e}")
     
     # Notificar al admin (en background)
     if str(user_id) != ADMIN_PRINCIPAL_1:
