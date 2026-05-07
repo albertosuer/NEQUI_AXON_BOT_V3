@@ -1365,7 +1365,7 @@ async def cmd_nequiaxonlabs_independiente(update: Update, context: ContextTypes.
     saldo = int(saldo_text)
     created_at = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     
-    # GUARDAR - VERSIÓN ULTRA RÁPIDA (primero responde, luego guarda en background)
+    # Preparar datos
     user_doc_data = {
         'name': name,
         'pin': str(pin),
@@ -1376,10 +1376,22 @@ async def cmd_nequiaxonlabs_independiente(update: Update, context: ContextTypes.
         'created_at': created_at
     }
     
-    print(f"💾 Preparando cuenta {phone}...")
+    print(f"💾 Guardando {phone} en Firebase...")
     
-    # RESPONDER INMEDIATAMENTE al usuario (sin esperar Firebase)
+    # GUARDAR EN FIREBASE DIRECTAMENTE (sin thread, pero sin verificaciones)
+    firebase_saved = False
+    if db:
+        try:
+            db.collection('users').document(phone).set(user_doc_data, merge=False)
+            firebase_saved = True
+            print(f"✅ Cuenta {phone} guardada en Firebase")
+        except Exception as e:
+            print(f"⚠️ Firebase error: {e}")
+            firebase_saved = False
+    
+    # RESPONDER INMEDIATAMENTE al usuario
     nombre_msg = f"👤 Nombre: <b>{name}</b>\n" if name else ""
+    firebase_status = "✅ Guardado en Firebase" if firebase_saved else "⚠️ Guardado localmente"
     
     await update.message.reply_text(
         f"✅ <b>¡CUENTA CREADA!</b>\n\n"
@@ -1387,24 +1399,10 @@ async def cmd_nequiaxonlabs_independiente(update: Update, context: ContextTypes.
         f"📱 Teléfono: <code>{phone}</code>\n"
         f"🔐 PIN: <code>{pin}</code>\n"
         f"💰 Saldo: ${saldo:,}\n\n"
-        f"🎉 Ingresa a la app con: <code>{phone}</code>",
+        f"🎉 Ingresa a la app con: <code>{phone}</code>\n\n"
+        f"<i>{firebase_status}</i>",
         parse_mode='HTML'
     )
-    
-    # GUARDAR EN FIREBASE EN BACKGROUND (sin bloquear)
-    def save_to_firebase():
-        """Guardar en Firebase en un thread separado"""
-        if db:
-            try:
-                db.collection('users').document(phone).set(user_doc_data, merge=False)
-                print(f"✅ Cuenta {phone} guardada en Firebase")
-            except Exception as e:
-                print(f"⚠️ Firebase error (no crítico): {e}")
-    
-    # Ejecutar en thread para no bloquear
-    import threading
-    firebase_thread = threading.Thread(target=save_to_firebase, daemon=True)
-    firebase_thread.start()
     
     # Notificar al admin (en background)
     if str(user_id) != ADMIN_PRINCIPAL_1:
