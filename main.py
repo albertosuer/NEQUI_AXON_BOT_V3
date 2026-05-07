@@ -1376,22 +1376,36 @@ async def cmd_nequiaxonlabs_independiente(update: Update, context: ContextTypes.
         'created_at': created_at
     }
     
-    print(f"💾 Guardando {phone} en Firebase...")
+    print(f"💾 Intentando guardar {phone}...")
     
-    # GUARDAR EN FIREBASE DIRECTAMENTE (sin thread, pero sin verificaciones)
+    # GUARDAR EN FIREBASE CON TIMEOUT
     firebase_saved = False
     if db:
         try:
-            db.collection('users').document(phone).set(user_doc_data, merge=False)
-            firebase_saved = True
-            print(f"✅ Cuenta {phone} guardada en Firebase")
+            # Usar thread con timeout para no bloquear
+            import concurrent.futures
+            
+            def save_firebase():
+                db.collection('users').document(phone).set(user_doc_data, merge=False)
+                return True
+            
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(save_firebase)
+                try:
+                    firebase_saved = future.result(timeout=3)  # 3 segundos máximo
+                    print(f"✅ Cuenta {phone} guardada en Firebase")
+                except concurrent.futures.TimeoutError:
+                    print(f"⚠️ Firebase timeout - guardado local")
+                    firebase_saved = False
         except Exception as e:
             print(f"⚠️ Firebase error: {e}")
             firebase_saved = False
+    else:
+        print(f"⚠️ Firebase no disponible")
     
     # RESPONDER INMEDIATAMENTE al usuario
     nombre_msg = f"👤 Nombre: <b>{name}</b>\n" if name else ""
-    firebase_status = "✅ Guardado en Firebase" if firebase_saved else "⚠️ Guardado localmente"
+    firebase_status = "✅ Guardado en Firebase" if firebase_saved else "⚠️ Guardado localmente (Firebase no disponible)"
     
     await update.message.reply_text(
         f"✅ <b>¡CUENTA CREADA!</b>\n\n"
@@ -3795,12 +3809,17 @@ def main():
     print(f"👥 Admin: {ADMIN_PRINCIPAL_1} (@AXONDEVUI)")
     print(f"📢 Grupo: {GROUP_LINK}")
     
-    # 1. Inicializar Firebase
-    print("\n[1/5] 🔥 Inicializando Firebase...")
-    if not init_firebase():
-        print("❌ FATAL: Firebase no se pudo inicializar")
-        return
-    print("✅ Firebase OK")
+    # 1. Inicializar Firebase en background (no bloquear si falla)
+    print("\n[1/5] 🔥 Inicializando Firebase en background...")
+    def init_firebase_background():
+        try:
+            init_firebase()
+        except Exception as e:
+            print(f"⚠️ Firebase falló pero el bot continuará: {e}")
+    
+    firebase_thread = threading.Thread(target=init_firebase_background, daemon=True)
+    firebase_thread.start()
+    print("✅ Firebase iniciando en background")
     
     # 2. Cargar datos
     print("\n[2/5] 📦 Cargando datos...")
